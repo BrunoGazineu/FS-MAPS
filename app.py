@@ -14,8 +14,6 @@ st.set_page_config(
     page_icon="🏢"  # Ícone da aba do navegador
 )
 
-
-
 USER_CREDENTIALS = {
     "password": ")}2W8PE_j39|~U7a5",
     "username": "colaborador"
@@ -173,5 +171,4 @@ if st.session_state.authenticated:
         st.markdown("Walkability score **informar o score**, **Bairro**: explicar o que é o walkscore, citar que é de 0-100 e como ele avalia isso. Criar um texto padrão para a) 0-50, b) 51-85, c) 86-100. Explicar o motivo da região ser ou não caminhável.")
 
         st.markdown("Pedestre/Carro: explicar como é a relação de pedestres e veículos no bairro informado.")
-
 
