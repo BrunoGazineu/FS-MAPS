@@ -1,5 +1,3 @@
-from utils import *
-
 import streamlit as st
 import geopandas as gpd
 import networkx as nx
@@ -10,7 +8,6 @@ import osmnx as ox
 from streamlit_folium import st_folium
 import folium
 from folium.plugins import Draw
-import requests
 
 from geocoder import *
 from app_features import *

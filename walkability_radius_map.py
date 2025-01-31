@@ -8,6 +8,8 @@ from shapely.ops import transform
 import geopandas as gpd
 import folium
 import streamlit as st
+from streamlit_folium import st_folium
+
 import math
 
 def create_map_circle(geometry, map_style, map_color):
