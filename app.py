@@ -119,13 +119,14 @@ if st.session_state.authenticated:
                     if st.session_state.geometry:
                         try:
                             
-                            walkability_gdf, bounds = calculate_walkability(st.session_state.geometry, walk_time_minutes, vehicle_speed, vehicle_type)
+                            walkability_gdf, bounds, centroid = calculate_walkability(st.session_state.geometry, walk_time_minutes, vehicle_speed, vehicle_type)
                             folium_map = plot_walkability_map(walkability_gdf, map_style, map_color, st.session_state.geometry)
                             st_folium(folium_map, width=1440, height=810, returned_objects=[])
                             download_image(folium_map, "Walkability")
 
                             # Gera e exibe o mapa com a geometria, preservando o mapa base
-                            centroid = walkability_gdf.geometry.iloc[0].centroid
+                            
+                            
                             map_lot_object = create_map(map_style, 16, False, [centroid.y, centroid.x])
                             st.title("Imagem do terreno")
                             if st.session_state.geometry:

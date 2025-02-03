@@ -58,8 +58,17 @@ def calculate_walkability(lot_coords, walk_time_minutes, vehicle_speed, day_time
     walkability_gdf = gpd.GeoDataFrame(
         geometry=[clean_polygon], crs=G_proj.graph["crs"]
     )
-    walkability_gdf = walkability_gdf.to_crs("EPSG:4326")
-    return walkability_gdf, clean_polygon.bounds
+    # 🚀 **Reprojetar para um CRS projetado antes de calcular o centróide**
+    walkability_gdf_proj = walkability_gdf.to_crs("EPSG:3857")  # Web Mercator
+
+    # Calcular o centróide corretamente no CRS projetado
+    centroid = walkability_gdf_proj.geometry.iloc[0].centroid
+
+    # Reprojetar para EPSG:4326 antes de retornar
+    walkability_gdf = walkability_gdf_proj.to_crs("EPSG:4326")
+    centroid = gpd.GeoSeries([centroid], crs="EPSG:3857").to_crs("EPSG:4326").iloc[0]
+
+    return walkability_gdf, clean_polygon.bounds, centroid
 
 
 def plot_walkability_map(walkability_gdf, map_style, map_color, geometry):
@@ -161,7 +170,22 @@ def create_city_map(geometry, map_style, map_color, zoom, option):
         limites_cidade = create_city_limits(f"{cidade}, {country}")
         
     
-    city_map = create_map(map_style, zoom, False, [limites_cidade.geometry.centroid.y, limites_cidade.geometry.centroid.x])  # Substitua com sua lógica    
+    #city_map = create_map(map_style, zoom, False, [limites_cidade.geometry.centroid.y.iloc[0], limites_cidade.geometry.centroid.x.iloc[0]])  
+    # Verificar o CRS atual
+    print(limites_cidade.crs)
+
+    # Definir um CRS projetado adequado (exemplo: Web Mercator EPSG:3857)
+    limites_proj = limites_cidade.to_crs(epsg=3857)
+
+    # Calcular o centróide corretamente
+    centroid = limites_proj.geometry.centroid.iloc[0]
+
+    # Reprojetar de volta para EPSG:4326
+    centroid = gpd.GeoSeries([centroid], crs="EPSG:3857").to_crs("EPSG:4326").iloc[0]
+
+    # Passar para a função create_map()
+    city_map = create_map(map_style, zoom, False, [centroid.y, centroid.x])
+
 
     if not limites_cidade.empty:
         # Converter a geometria para GeoJSON
