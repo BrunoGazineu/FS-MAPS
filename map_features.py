@@ -184,7 +184,7 @@ def create_city_map(geometry, map_style, map_color, zoom, option):
     centroid = gpd.GeoSeries([centroid], crs="EPSG:3857").to_crs("EPSG:4326").iloc[0]
 
     # Passar para a função create_map()
-    city_map = create_map(map_style, zoom, False, [centroid.y, centroid.x])
+    city_map = create_map(map_style, zoom, False, [centroid.y, centroid.x, 0])
 
 
     if not limites_cidade.empty:
