@@ -70,7 +70,7 @@ if st.session_state.authenticated:
     vehicle_speed = vehicle_speed_options[selected_vehicle_speed]                                   
 
     st.sidebar.header("Map style definitions")
-    """map_style = st.sidebar.selectbox(
+    map_style = st.sidebar.selectbox(
         "Map Style",
         [
             "Stadia.AlidadeSmoothDark",
@@ -78,14 +78,6 @@ if st.session_state.authenticated:
             "Stadia.AlidadeSmooth",
             "Esri.WorldImagery",
             "Stadia.AlidadeSatellite",
-        ],
-    )"""
-
-    map_style = st.sidebar.selectbox(
-        "Map Style",
-        [
-            "CartoDB.Positron",
-            "Esri.WorldImagery",
         ],
     )
 
