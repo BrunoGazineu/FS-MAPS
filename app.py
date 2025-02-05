@@ -3,10 +3,19 @@ from geocoder import *
 from map_features import calculate_walkability, plot_walkability_map, create_city_map
 from walkability_radius_map import *
 import folium
-
+from streamlit_folium import folium_static
 
 import streamlit as st
+import plotly.express as px
+import plotly.graph_objects as go
+
+import io
+import pandas as pd
+
+
 from streamlit_folium import st_folium
+from staticmap import StaticMap, Polygon
+
 
 st.set_page_config(
     layout="wide",  # Escolha entre 'centered' ou 'wide'
@@ -25,7 +34,6 @@ if "authenticated" not in st.session_state:
 
 def authenticate(username, password, USER_CREDENTIALS):
     """Check if the username exists and password matches."""
-    st.write(USER_CREDENTIALS.get("username"))
     return USER_CREDENTIALS.get("username") == username and USER_CREDENTIALS.get("password") == password
 
 
@@ -35,7 +43,6 @@ if not st.session_state.authenticated:
 
     with st.form("login_form"):
         username = st.text_input("Username")
-        st.write(USER_CREDENTIALS.get("username"))
         password = st.text_input("Password", type="password")
         login_button = st.form_submit_button("Login")
 
@@ -49,19 +56,27 @@ if not st.session_state.authenticated:
 
 # Protected content
 if st.session_state.authenticated:
-    page = st.sidebar.selectbox("Escolha uma página:", ["Mapas", "IA textos"])
+    st.sidebar.header("Automações FS")
+    st.sidebar.markdown("""
+    <p style='font-size:12px;'>Selecione se deseja gerar mapas para sua apresentação ou verificar os inputs necessários para gerar textos os textos referenctes ao local com IA</p>
+    """, unsafe_allow_html=True)
+    page = st.sidebar.selectbox("Selecione:", ["Mapas", "IA textos"])
 
     # Exemplo de conteúdo na sidebar
-    st.sidebar.title("Automação Mapas FS")
+    st.sidebar.header("Walkability definitions")
+    st.sidebar.markdown("""
+    <p style='font-size:12px;'>1. Desenhe o terreno no mapa ao lado.</p>
+    <br>
+    <p style='font-size:12px;'>2. Preencha os campos dentro de 'Walkability definitions' para definir as características que serão utilizadas para gerar o mapa de walkability. Obs: sempre que alterar os valores, clicar no botão gerar mapa novamente.</p>
+    """, unsafe_allow_html=True)
 
-    st.sidebar.header("Local")
-    option = st.sidebar.text_input("Deseja informar o local? Digite no formato: 'Cidade, País'")
+
+
 
     # Sidebar inputs
-    st.sidebar.header("Walkability definitions")
     walk_time_minutes = st.sidebar.slider("Walking Time (minutes)", 5, 60, 15)
 
-    vehicle_type_options = {"A pé": 4, "Automóvel": 20}
+    vehicle_type_options = {"A pé": 4, "Automóvel": 40}
     selected_vehicle_type = st.sidebar.selectbox("Selecione o meio de transporte utilizado", list(vehicle_type_options.keys()))
     vehicle_type = vehicle_type_options[selected_vehicle_type]  
 
@@ -70,6 +85,10 @@ if st.session_state.authenticated:
     vehicle_speed = vehicle_speed_options[selected_vehicle_speed]                                   
 
     st.sidebar.header("Map style definitions")
+    st.sidebar.markdown("""
+    <p style='font-size:12px;'>1. Escolha abaixo os estilos de mapa e cores desejadas para a sua apresentação.Obs: sempre que alterar os valores, clicar no botão gerar mapa novamente.</p>
+    """, unsafe_allow_html=True)
+
     map_style = st.sidebar.selectbox(
         "Map Style",
         [
@@ -82,9 +101,13 @@ if st.session_state.authenticated:
     )
 
     map_color = st.sidebar.color_picker("Walkability Area Color", "#FFFFFF")
-
-    radius_text = st.sidebar.toggle("Deseja mostrar o texto no walkability redondo?")
-
+    radius_text = st.sidebar.toggle("Deseja mostrar o texto no raio de walkability?", value=True)
+    
+    st.sidebar.header("Local")
+    st.sidebar.markdown("""
+    <p style='font-size:12px;'>Caso o mapa não gere a cidade desejada, informe o local abaixo.</p>
+    """, unsafe_allow_html=True)
+    option = st.sidebar.text_input("Digite no formato: 'Cidade, País'")
 
     if page == "Mapas":
         # Título da aplicação
@@ -106,6 +129,7 @@ if st.session_state.authenticated:
 
 
         if st.session_state.clicked:
+                        
             # Verifica se o 'all_drawings' está no output e contém dados
             if output and 'all_drawings' in output and (output['all_drawings']):
                 # Extrai as coordenadas do primeiro desenho
@@ -119,25 +143,35 @@ if st.session_state.authenticated:
                     if st.session_state.geometry:
                         try:
                             
+                            
                             walkability_gdf, bounds, centroid = calculate_walkability(st.session_state.geometry, walk_time_minutes, vehicle_speed, vehicle_type)
                             folium_map = plot_walkability_map(walkability_gdf, map_style, map_color, st.session_state.geometry)
                             st_folium(folium_map, width=1440, height=810, returned_objects=[])
-                            download_image(folium_map, "Walkability")
-
-                            # Gera e exibe o mapa com a geometria, preservando o mapa base
                             
+                            # Create a static map
+                            folium_map_static = StaticMap(2560, 1440, url_template="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}")
+                            
+                            geometry = walkability_gdf.geometry.iloc[0]
+
+                            polygon_coords = [(lon, lat) for lon, lat in list(geometry.exterior.coords)]
+                            
+                            
+                            #PLOTLY
+                            #------------------------------------------------------------------------------
+                            
+                            
+                                                        
+ 
+                            #------------------------------------------------------------------------------
                             
                             map_lot_object = create_map(map_style, 16, False, [centroid.y, centroid.x])
                             st.title("Imagem do terreno")
                             if st.session_state.geometry:
                                 # Adiciona a geometria (polígono) ao mapa base
-                                bounds = calculate_bounding_box(st.session_state.geometry)
-                                img_map_object = create_img_map(bounds, map_style)
-                                map_object = add_polygon_to_map(st.session_state.geometry, map_lot_object, map_color)
-                                img_map_object = add_polygon_to_map(st.session_state.geometry, img_map_object, map_color)
+                                img_map_object = add_polygon_to_map(st.session_state.geometry, map_lot_object, map_color)
                                 st_folium(img_map_object, width=1440, height=810, returned_objects=[])
                                 # Provide a download button
-                                download_image(img_map_object, "Lot map")   
+                                download_image(img_map_object, "Lot map")  
 
                             st.title("Mapa da cidade")
                             city_map = create_city_map(st.session_state.geometry, map_style, map_color, 10, option)
@@ -146,7 +180,7 @@ if st.session_state.authenticated:
 
 
                             #CRIA MAPA REDONDO
-                            walkability_radius_map, center_projected, unproject = create_map_circle(st.session_state.geometry, map_style, map_color)
+                            walkability_radius_map, center_projected, unproject = create_map_circle(st.session_state.geometry, map_style, map_color, vehicle_speed, vehicle_type, walk_time_minutes)
                             if radius_text:
                                 walkability_radius_map = add_text_to_circle(walk_time_minutes, vehicle_speed, vehicle_type, walkability_radius_map,center_projected, unproject, map_color)
                             else:

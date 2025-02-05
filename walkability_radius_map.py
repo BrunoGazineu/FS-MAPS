@@ -12,16 +12,17 @@ from streamlit_folium import st_folium
 
 import math
 
-def create_map_circle(geometry, map_style, map_color):
+def create_map_circle(geometry, map_style, map_color, vehicle_speed, vehicle_type, walk_time_minutes):
+
+    distance = (vehicle_speed*vehicle_type) * (walk_time_minutes/60)*1000
     # Configurar Streamlit
     center = calculate_polygon_center(geometry)
-    center_inverted = [center[1], center[0]]
     center_point = Point(center[1], center[0]) #Longitude, Latitude
     project = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:3857", always_xy=True).transform
     center_projected = transform(project, center_point)
 
     # Criar buffer em metros
-    buffer_projected = center_projected.buffer(1000)
+    buffer_projected = center_projected.buffer(distance)
 
     # Reprojetar de volta para EPSG:4326
     unproject = pyproj.Transformer.from_crs("EPSG:3857", "EPSG:4326", always_xy=True).transform
