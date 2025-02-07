@@ -1,20 +1,13 @@
 from app_features import *
 from geocoder import *
-from map_features import calculate_walkability, plot_walkability_map, create_city_map
+from map_features import calculate_walkability, create_city_map
 from walkability_radius_map import *
-import folium
-from streamlit_folium import folium_static
 
 import streamlit as st
-import plotly.express as px
 import plotly.graph_objects as go
 
-import io
-import pandas as pd
-
-
 from streamlit_folium import st_folium
-from staticmap import StaticMap, Polygon
+from staticmap import Polygon
 from shapely.geometry import Polygon, MultiPolygon
 
 
