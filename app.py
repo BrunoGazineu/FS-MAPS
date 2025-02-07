@@ -15,6 +15,7 @@ import pandas as pd
 
 from streamlit_folium import st_folium
 from staticmap import StaticMap, Polygon
+from shapely.geometry import Polygon, MultiPolygon
 
 
 st.set_page_config(
@@ -76,7 +77,7 @@ if st.session_state.authenticated:
     # Sidebar inputs
     walk_time_minutes = st.sidebar.slider("Walking Time (minutes)", 5, 60, 15)
 
-    vehicle_type_options = {"A pé": 4, "Automóvel": 40}
+    vehicle_type_options = {"A pé": 4, "Automóvel": 20}
     selected_vehicle_type = st.sidebar.selectbox("Selecione o meio de transporte utilizado", list(vehicle_type_options.keys()))
     vehicle_type = vehicle_type_options[selected_vehicle_type]  
 
@@ -145,48 +146,118 @@ if st.session_state.authenticated:
                             
                             
                             walkability_gdf, bounds, centroid = calculate_walkability(st.session_state.geometry, walk_time_minutes, vehicle_speed, vehicle_type)
-                            folium_map = plot_walkability_map(walkability_gdf, map_style, map_color, st.session_state.geometry)
-                            st_folium(folium_map, width=1440, height=810, returned_objects=[])
+                            #folium_map = plot_walkability_map(walkability_gdf, map_style, map_color, st.session_state.geometry)
                             
                             # Create a static map
-                            folium_map_static = StaticMap(2560, 1440, url_template="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}")
                             
                             geometry = walkability_gdf.geometry.iloc[0]
+                            polygon_coords = [(lon, lat) for lon, lat in list(geometry.exterior.coords)]              
+                            def plot_plotly(lot_coords, geometry_coords, map_style, map_color, zoom, centroid, plot_polygon, walkability_id, walkability_lot_id,dashed):
+                                lon, lat = zip(*geometry_coords)
+                                lon_1,lat_1 = zip(*lot_coords) 
+                                
+                                fig = go.Figure()
 
-                            polygon_coords = [(lon, lat) for lon, lat in list(geometry.exterior.coords)]
-                            
-                            
-                            #PLOTLY
+                                fig.add_trace(go.Scattermap(
+                                    lon=lon_1, lat=lat_1,
+                                    mode="lines",
+                                    fill="toself",
+                                    fillcolor="rgb(255, 255, 255)",  # Certifique-se de incluir transparência
+                                    line=dict(color="rgb(255, 255, 255)", width=3),
+                                    name= walkability_lot_id
+                                ))
+
+                                if plot_polygon:
+                                    if dashed:
+                                        lon_dashed = []
+                                        lat_dashed = []
+
+                                        for i in range(len(lon) - 1):
+                                            if i % (2 * 1) < 1:
+                                                lon_dashed.extend([lon[i], lon[i + 1], None])  # Break the line with None
+                                                lat_dashed.extend([lat[i], lat[i + 1], None])
+                                        
+                                        fig.add_trace(go.Scattermap(
+                                            lon=lon_dashed, lat=lat_dashed,
+                                            mode="lines",
+                                            line=dict(color="rgb(255, 255, 255)", width=4),
+                                            name= walkability_id
+                                        ))
+                                        fig.add_trace(go.Scattermap(
+                                            lon=lon, lat=lat,
+                                            mode="none",
+                                            fill="toself",
+                                            fillcolor="rgba(255, 255, 255, 0.3)",  # Certifique-se de incluir transparência
+                                            name= walkability_id
+                                        ))
+                                        
+                                    else:
+                                        fig.add_trace(go.Scattermap(
+                                            lon=lon, lat=lat,
+                                            mode="lines",
+                                            fill="toself",
+                                            fillcolor="rgba(255, 255, 255, 0.5)",  # Certifique-se de incluir transparência
+                                            line=dict(color="rgb(255, 255, 255)", width=3),
+                                            name= walkability_id
+                                        ))
+
+                                fig.update_layout(
+                                    map={
+                                        'style': "satellite",  # Style
+                                        'center': {'lon': list(centroid.coords)[0][0], 'lat': list(centroid.coords)[0][1]},
+                                        'zoom': zoom,
+                                    },
+                                    showlegend=False,
+                                    margin={'l': 0, 'r': 0, 'b': 0, 't': 0},
+                                    width=1440,
+                                    height=880
+                                )
+
+
+                                st.plotly_chart(fig)
+
+                            plot_plotly(st.session_state.geometry, polygon_coords, map_style, map_color, 14, centroid, True, "walkability_id" ,"walkability_lot_id", False)
                             #------------------------------------------------------------------------------
                             
-                            
-                                                        
- 
                             #------------------------------------------------------------------------------
-                            
+                            #MAPA DO TERRENO
                             map_lot_object = create_map(map_style, 16, False, [centroid.y, centroid.x])
                             st.title("Imagem do terreno")
                             if st.session_state.geometry:
                                 # Adiciona a geometria (polígono) ao mapa base
-                                img_map_object = add_polygon_to_map(st.session_state.geometry, map_lot_object, map_color)
-                                st_folium(img_map_object, width=1440, height=810, returned_objects=[])
+                                plot_plotly(st.session_state.geometry, polygon_coords, map_style, map_color, 16, centroid, False, "lot_id", "lot_polygon_id", False)
                                 # Provide a download button
-                                download_image(img_map_object, "Lot map")  
 
+                            #MAPA DA CIDADE
                             st.title("Mapa da cidade")
-                            city_map = create_city_map(st.session_state.geometry, map_style, map_color, 10, option)
-                            st_folium(city_map, width=1440, height=810, returned_objects=[])
-                            download_image(city_map, "city_map")
+                            limites_cidade_gdf = create_city_map(st.session_state.geometry, map_style, map_color, 10, option)
+                            city_geometry = limites_cidade_gdf.geometry.iloc[0]
 
 
-                            #CRIA MAPA REDONDO
-                            walkability_radius_map, center_projected, unproject = create_map_circle(st.session_state.geometry, map_style, map_color, vehicle_speed, vehicle_type, walk_time_minutes)
+
+                            if isinstance(city_geometry, Polygon):  # Caso seja um único polígono
+                                city_geometry_coords = [(lon, lat) for lon, lat in list(city_geometry.exterior.coords)]
+                                
+                            elif isinstance(city_geometry, MultiPolygon):  # Caso seja um MultiPolygon
+                                city_geometry_coords = []
+                                for poly in city_geometry.geoms:
+                                    coords = [(lon, lat) for lon, lat in poly.exterior.coords]  # Lista de tuplas (lon, lat) para cada polígono
+                                    city_geometry_coords.append(coords)  # Adiciona cada polígono à lista principal
+
+                            plot_plotly(st.session_state.geometry, city_geometry_coords, map_style, map_color, 9, centroid, True, "lot_city_id","polygon_city_id", False)
+
+
+                            #MAPA REDONDO
+                            radius_gdf, center_projected, unproject = create_map_circle(st.session_state.geometry, map_style, map_color, vehicle_speed, vehicle_type, walk_time_minutes)
+                            circle_geometry = radius_gdf.geometry.iloc[0]
+                            circle_geometry_coords = [(lon, lat) for lon, lat in list(circle_geometry.exterior.coords)]
                             if radius_text:
-                                walkability_radius_map = add_text_to_circle(walk_time_minutes, vehicle_speed, vehicle_type, walkability_radius_map,center_projected, unproject, map_color)
+                                #walkability_radius_map = add_text_to_circle(walk_time_minutes, vehicle_speed, vehicle_type, walkability_radius_map,center_projected, unproject, map_color)
+                                plot_plotly(st.session_state.geometry, circle_geometry_coords, map_style, map_color, 14, centroid, True, "lot_city_id","polygon_city_id", True)
                             else:
-                                st_folium(walkability_radius_map, width=1440, height=810, returned_objects=[])
+                                plot_plotly(st.session_state.geometry, circle_geometry_coords, map_style, map_color, 14, centroid, True, "lot_city_id","polygon_city_id", True)
                             
-                            download_image(walkability_radius_map,"Radius_map")
+                            
 
                         except Exception as e:
                             st.error(f"An error occurred: {e}")
@@ -198,7 +269,6 @@ if st.session_state.authenticated:
         st.subheader("Copie as instruções abaixo para o chatgpt alterando apenas o seu consteúdo em **negrito**, de acordo com o local do estudo")
         st.markdown("Descreva a seguinte cidade preenchendo cada apecto listado em até 350 caracteres.")
         
-
         st.markdown("**Cidade**: nome relevância para o seu Estado e/ou proximidade com eixos relevantes, uso principal (turismo, comércio, serviços, industrial, etc). Foi uma cidade planejada?")
 
         st.markdown("**Bairro**: qual a relação do terreno com o centro da cidade? Se situa em uma região consolidada ou em desenvolvimento? Qual o caráter do bairro (verde, residencial unifamiliar, uso misto, vazio)?")

@@ -77,71 +77,9 @@ def plot_walkability_map(walkability_gdf, map_style, map_color, geometry):
     """
     # Get the center of the polygon
     centroid = walkability_gdf.geometry.iloc[0].centroid
-    m = folium.Map(location=[centroid.y, centroid.x], zoom_start=15, tiles=map_style, control_scale=False,  # Remove a escala
-    zoom_control=False)
+    
 
-    # Add the walkability area
-    folium.GeoJson(
-        data=walkability_gdf.__geo_interface__,
-        style_function=lambda x: {
-            "fillColor": map_color,
-            "color": map_color,
-            "weight": 3,
-            "fillOpacity": 0.5,
-        },
-    ).add_to(m)
-
-    folium.Polygon(
-        locations=[coord[::-1] for coord in geometry],  # Reverter para (lat, lon)
-        color= map_color,
-        fill=True,
-        fill_color=map_color,
-        fill_opacity=1
-    ).add_to(m)
-
-    if map_style == "Stadia.AlidadeSmooth":
-        folium.TileLayer(
-            tiles="https://{s}.basemaps.stadiamaps.com/AlidadeSmooth/{z}/{x}/{y}.png",
-            attr="&copy; <a href='https://stadiamaps.com/'>Stadia Maps</a> contributors",
-            name="Stadia.AlidadeSmooth",
-            control=True  # This enables the basemap to be selectable in the layer control
-        ).add_to(m)
-
-    elif map_style == "CartoDB.Positron":
-        folium.TileLayer(
-            tiles="https://{s}.basemaps.stadiamaps.com/AlidadeSmooth/{z}/{x}/{y}.png",
-            attr="&copy; <a href='https://stadiamaps.com/'>Stadia Maps</a> contributors",
-            name="Stadia.AlidadeSmooth",
-            control=True  # This enables the basemap to be selectable in the layer control
-        ).add_to(m)
-
-    elif map_style == "OpenStreetMap":
-        folium.TileLayer(
-            tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-            attr="&copy; <a href='https://www.esri.com/'>Esri</a> &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community",
-            name="Esri.WorldImagery",
-            control=True  # This enables the basemap to be selectable in the layer control # This enables the basemap to be selectable in the layer control
-        ).add_to(m)
-
-    elif map_style == "Stadia.AlidadeSmoothDark":
-        folium.TileLayer(
-            tiles="https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png",
-            attr="&copy; <a href='https://stadiamaps.com/'>Stadia Maps</a> contributors",
-            name="Stadia.AlidadeSmoothDark",
-            control=True,
-        ).add_to(m)
-
-    elif map_style == "Stadia.AlidadeSmoothDark":
-        folium.TileLayer(
-            tiles="https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}{r}.jpg",
-            attr='&copy; CNES, Distribution Airbus DS, &copy; Airbus DS, &copy; PlanetObserver (Contains Copernicus Data) | '
-                '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> '
-                '&copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> '
-                '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            name="Stadia.AlidadeSatellite",
-    control=True,  # Permite a seleção no controle de camadas
-
-        ).add_to(m)
+    
     return m
 
 
@@ -168,41 +106,13 @@ def create_city_map(geometry, map_style, map_color, zoom, option):
         limites_cidade = create_city_limits(option)
     else:
         limites_cidade = create_city_limits(f"{cidade}, {country}")
-        
-    
-    #city_map = create_map(map_style, zoom, False, [limites_cidade.geometry.centroid.y.iloc[0], limites_cidade.geometry.centroid.x.iloc[0]])  
-    # Verificar o CRS atual
-    print(limites_cidade.crs)
 
     # Definir um CRS projetado adequado (exemplo: Web Mercator EPSG:3857)
     limites_proj = limites_cidade.to_crs(epsg=3857)
-
     # Calcular o centróide corretamente
     centroid = limites_proj.geometry.centroid.iloc[0]
-
     # Reprojetar de volta para EPSG:4326
     centroid = gpd.GeoSeries([centroid], crs="EPSG:3857").to_crs("EPSG:4326").iloc[0]
-
     # Passar para a função create_map()
-    city_map = create_map(map_style, zoom, False, [centroid.y, centroid.x])
 
-
-    if not limites_cidade.empty:
-        # Converter a geometria para GeoJSON
-        geojson_data = limites_cidade.geometry.to_json()
-
-        # Adicionar limites da cidade ao mapa
-        folium.GeoJson(
-            geojson_data,
-            name="Limites da Cidade",
-            style_function=lambda x: {
-                "fillColor": map_color,
-                "color": map_color,
-                "weight": 2,
-                "fillOpacity": 0.5
-            },
-        ).add_to(city_map)
-    else:
-        print("Não foi possível encontrar os limites para esta cidade.")
-
-    return city_map
+    return limites_cidade
