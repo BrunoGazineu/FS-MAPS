@@ -31,18 +31,8 @@ def create_map_circle(geometry, map_style, map_color, vehicle_speed, vehicle_typ
     # Criar GeoDataFrame
     gdf = gpd.GeoDataFrame({"geometry": [buffer_in_degrees]}, crs="EPSG:4326")
     # Criar o mapa
-    #walkability_radius_map = folium.Map(location=center, zoom_start=16, tiles=map_style)
-    walkability_radius_map = create_map(map_style, 15, False, center)
                                 
-    # Adicionar o buffer ao mapa
-    folium.GeoJson(
-        gdf,
-        name="Raio",
-        style_function=lambda x: {"color":map_color, "fillColor": map_color, "weight": 2.5, "fillOpacity": 0.1, "dashArray": "6, 6",},
-    ).add_to(walkability_radius_map)
-
-    walkability_radius_map = add_polygon_to_map(geometry, walkability_radius_map, map_color)
-    return walkability_radius_map, center_projected, unproject
+    return gdf, center_projected, unproject
 
 def add_text_to_circle(walk_time_minutes, vehicle_speed, vehicle_type, walkability_radius_map,center_projected, unproject, map_color):
     # Adicionar texto ao redor do círculo
@@ -51,9 +41,7 @@ def add_text_to_circle(walk_time_minutes, vehicle_speed, vehicle_type, walkabili
                     walk_distance = (travel_speed / 60) * walk_time_minutes
                     walk_distance_meters = walk_distance * 1100
 
-                    google_fonts = """
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400&display=swap" rel="stylesheet">
-"""
+                    google_fonts = """<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400&display=swap" rel="stylesheet">"""
 
                     radius = 1100
                     num_chars = len(texto)  # Número de pontos para o texto

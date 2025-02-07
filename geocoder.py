@@ -39,6 +39,8 @@ def geocode_city(center_point):
         location = geolocator.reverse(center_point, exactly_one=True)
         if location and "address" in location.raw:
             city = location.raw.get('address', {}).get('city')
+            if not city:
+                 city = location.raw.get('address', {}).get('city_district')
             country = location.raw.get('address', {}).get('country')
             if city and country:
                 return city, country
