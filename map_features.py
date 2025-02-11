@@ -97,22 +97,22 @@ def create_city_limits(cidade):
     return city_boundary
 
 
-def create_city_map(geometry, map_style, map_color, zoom, option):
+def create_place_limits(geometry, option, area_type):
     """Cria um mapa com os limites da cidade."""
     center_point = calculate_polygon_center(geometry)  # Substitua com sua lógica
-    cidade, country = geocode_city(center_point)  # Substitua com sua lógica
+    cidade, country, neighborhood = geocode_city(center_point)  # Substitua com sua lógica
+    if area_type == "city":
+        if option:
+            limites_local = create_city_limits(option)
+        else:
+            limites_local = create_city_limits(f"{cidade}, {country}")
+        return limites_local
+    elif area_type == "suburb":
+        if option:
+            limites_local = create_city_limits(option)
+        else:
+            limites_local = create_city_limits(f"{neighborhood}, {cidade}, {country}")
+        return limites_local
 
-    if option:
-        limites_cidade = create_city_limits(option)
-    else:
-        limites_cidade = create_city_limits(f"{cidade}, {country}")
 
-    # Definir um CRS projetado adequado (exemplo: Web Mercator EPSG:3857)
-    limites_proj = limites_cidade.to_crs(epsg=3857)
-    # Calcular o centróide corretamente
-    centroid = limites_proj.geometry.centroid.iloc[0]
-    # Reprojetar de volta para EPSG:4326
-    centroid = gpd.GeoSeries([centroid], crs="EPSG:3857").to_crs("EPSG:4326").iloc[0]
-    # Passar para a função create_map()
 
-    return limites_cidade

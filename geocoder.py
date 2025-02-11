@@ -42,8 +42,9 @@ def geocode_city(center_point):
             if not city:
                  city = location.raw.get('address', {}).get('city_district')
             country = location.raw.get('address', {}).get('country')
-            if city and country:
-                return city, country
+            neighborhood = location.raw.get('address', {}).get('suburb')
+            if city and country and neighborhood:
+                return city, country, neighborhood
             return "Local não encontrado"
         else:
             return "Nenhum local encontrado"

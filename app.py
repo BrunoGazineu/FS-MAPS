@@ -1,6 +1,6 @@
 from app_features import *
 from geocoder import *
-from map_features import calculate_walkability, create_city_map
+from map_features import calculate_walkability, create_place_limits
 from walkability_radius_map import *
 
 import streamlit as st
@@ -210,18 +210,32 @@ if st.session_state.authenticated:
                             #------------------------------------------------------------------------------
                             #MAPA DO TERRENO
                             map_lot_object = create_map(map_style, 16, False, [centroid.y, centroid.x])
-                            st.title("Imagem do terreno")
+                            st.title("Mapa do terreno")
                             if st.session_state.geometry:
                                 # Adiciona a geometria (polígono) ao mapa base
                                 plot_plotly(st.session_state.geometry, polygon_coords, map_style, map_color, 16, centroid, False, "lot_id", "lot_polygon_id", False)
                                 # Provide a download button
 
+                            #MAPA DO BAIRRO
+                            st.title("Mapa do Bairro")
+                            limites_neighborhood_gdf = create_place_limits(st.session_state.geometry, option, "suburb")
+                            neighborhood_geometry_geometry = limites_neighborhood_gdf.geometry.iloc[0]
+
+                            if isinstance(neighborhood_geometry_geometry, Polygon):  # Caso seja um único polígono
+                                neighborhood_geometry_coords = [(lon, lat) for lon, lat in list(neighborhood_geometry_geometry.exterior.coords)]
+                                
+                            elif isinstance(neighborhood_geometry_geometry, MultiPolygon):  # Caso seja um MultiPolygon
+                                neighborhood_geometry_coords = []
+                                for poly in neighborhood_geometry_geometry.geoms:
+                                    coords = [(lon, lat) for lon, lat in poly.exterior.coords]  # Lista de tuplas (lon, lat) para cada polígono
+                                    neighborhood_geometry_coords.append(coords)  # Adiciona cada polígono à lista principal
+
+                            plot_plotly(st.session_state.geometry, neighborhood_geometry_coords, map_style, map_color, 13, centroid, True, "lot_city_id","nieghborhood_city_id", False)
+
                             #MAPA DA CIDADE
                             st.title("Mapa da cidade")
-                            limites_cidade_gdf = create_city_map(st.session_state.geometry, map_style, map_color, 10, option)
+                            limites_cidade_gdf = create_place_limits(st.session_state.geometry, option, "city" )
                             city_geometry = limites_cidade_gdf.geometry.iloc[0]
-
-
 
                             if isinstance(city_geometry, Polygon):  # Caso seja um único polígono
                                 city_geometry_coords = [(lon, lat) for lon, lat in list(city_geometry.exterior.coords)]
@@ -233,9 +247,11 @@ if st.session_state.authenticated:
                                     city_geometry_coords.append(coords)  # Adiciona cada polígono à lista principal
 
                             plot_plotly(st.session_state.geometry, city_geometry_coords, map_style, map_color, 9, centroid, True, "lot_city_id","polygon_city_id", False)
-
-
+                            
+                            
+                            
                             #MAPA REDONDO
+                            st.title("Raio walkability")
                             radius_gdf, center_projected, unproject = create_map_circle(st.session_state.geometry, map_style, map_color, vehicle_speed, vehicle_type, walk_time_minutes)
                             circle_geometry = radius_gdf.geometry.iloc[0]
                             circle_geometry_coords = [(lon, lat) for lon, lat in list(circle_geometry.exterior.coords)]
@@ -244,7 +260,6 @@ if st.session_state.authenticated:
                                 plot_plotly(st.session_state.geometry, circle_geometry_coords, map_style, map_color, 14, centroid, True, "lot_city_id","polygon_city_id", True)
                             else:
                                 plot_plotly(st.session_state.geometry, circle_geometry_coords, map_style, map_color, 14, centroid, True, "lot_city_id","polygon_city_id", True)
-                            
                             
 
                         except Exception as e:
