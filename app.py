@@ -17,18 +17,15 @@ st.set_page_config(
     page_icon="🏢"  # Ícone da aba do navegador
 )
 
-USER_CREDENTIALS = {
-    "password": ")}2W8PE_j39|~U7a5",
-    "username": "colaborador"
-}
+
 
 # Initialize session state
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
-def authenticate(username, password, USER_CREDENTIALS):
+def authenticate(username, password, st_username, st_passoword):
     """Check if the username exists and password matches."""
-    return USER_CREDENTIALS.get("username") == username and USER_CREDENTIALS.get("password") == password
+    return st_username == username and st_passoword == password
 
 
 # Login form
@@ -41,7 +38,7 @@ if not st.session_state.authenticated:
         login_button = st.form_submit_button("Login")
 
     if login_button:
-        if authenticate(username, password, USER_CREDENTIALS):
+        if authenticate(username, password, st.secrets["USERNAME"], st.secrets["PASSWORD"] ):
             st.session_state.authenticated = True
             st.success("✅ Login successful!")
             st.rerun()
@@ -83,16 +80,7 @@ if st.session_state.authenticated:
     <p style='font-size:12px;'>1. Escolha abaixo os estilos de mapa e cores desejadas para a sua apresentação.Obs: sempre que alterar os valores, clicar no botão gerar mapa novamente.</p>
     """, unsafe_allow_html=True)
 
-    map_style = st.sidebar.selectbox(
-        "Map Style",
-        [
-            "Stadia.AlidadeSmoothDark",
-            "CartoDB.Positron",
-            "Stadia.AlidadeSmooth",
-            "Esri.WorldImagery",
-            "Stadia.AlidadeSatellite",
-        ],
-    )
+    map_style = []
 
     map_color = st.sidebar.color_picker("Walkability Area Color", "#FFFFFF")
     radius_text = st.sidebar.toggle("Deseja mostrar o texto no raio de walkability?", value=True)
@@ -148,15 +136,17 @@ if st.session_state.authenticated:
                             def plot_plotly(lot_coords, geometry_coords, map_style, map_color, zoom, centroid, plot_polygon, walkability_id, walkability_lot_id,dashed):
                                 lon, lat = zip(*geometry_coords)
                                 lon_1,lat_1 = zip(*lot_coords) 
+                                hex_color = map_color.lstrip("#")  # Remove "#" se presente
+                                rgb_color = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
                                 
                                 fig = go.Figure()
 
-                                fig.add_trace(go.Scattermap(
+                                fig.add_trace(go.Scattermapbox(
                                     lon=lon_1, lat=lat_1,
                                     mode="lines",
                                     fill="toself",
-                                    fillcolor="rgb(255, 255, 255)",  # Certifique-se de incluir transparência
-                                    line=dict(color="rgb(255, 255, 255)", width=3),
+                                    fillcolor=f"rgb({rgb_color[0]}, {rgb_color[1]}, {rgb_color[2]})",  # Certifique-se de incluir transparência
+                                    line=dict(color=f"rgb({rgb_color[0]}, {rgb_color[1]}, {rgb_color[2]})", width=3),
                                     name= walkability_lot_id
                                 ))
 
@@ -170,40 +160,45 @@ if st.session_state.authenticated:
                                                 lon_dashed.extend([lon[i], lon[i + 1], None])  # Break the line with None
                                                 lat_dashed.extend([lat[i], lat[i + 1], None])
                                         
-                                        fig.add_trace(go.Scattermap(
+                                        fig.add_trace(go.Scattermapbox(
                                             lon=lon_dashed, lat=lat_dashed,
                                             mode="lines",
-                                            line=dict(color="rgb(255, 255, 255)", width=4),
+                                            line=dict(color=f"rgb({rgb_color[0]}, {rgb_color[1]}, {rgb_color[2]})", width=4),
                                             name= walkability_id
                                         ))
-                                        fig.add_trace(go.Scattermap(
+                                        fig.add_trace(go.Scattermapbox(
                                             lon=lon, lat=lat,
                                             mode="none",
                                             fill="toself",
-                                            fillcolor="rgba(255, 255, 255, 0.3)",  # Certifique-se de incluir transparência
+                                            fillcolor=f"rgba({rgb_color[0]}, {rgb_color[1]}, {rgb_color[2]}, 0.5)",  # Certifique-se de incluir transparência
                                             name= walkability_id
                                         ))
-                                        
                                     else:
-                                        fig.add_trace(go.Scattermap(
+                                        fig.add_trace(go.Scattermapbox(
+                                            lon=lon, lat=lat,
+                                            mode="none",
+                                            fill="toself",
+                                            fillcolor=f"rgba({rgb_color[0]}, {rgb_color[1]}, {rgb_color[2]}, 0.5)",  # Certifique-se de incluir transparência
+                                            name= walkability_id
+                                        ))
+                                        fig.add_trace(go.Scattermapbox(
                                             lon=lon, lat=lat,
                                             mode="lines",
-                                            fill="toself",
-                                            fillcolor="rgba(255, 255, 255, 0.5)",  # Certifique-se de incluir transparência
-                                            line=dict(color="rgb(255, 255, 255)", width=3),
+                                            line=dict(color=f"rgb({rgb_color[0]}, {rgb_color[1]}, {rgb_color[2]})", width=4),
                                             name= walkability_id
                                         ))
 
                                 fig.update_layout(
-                                    map={
-                                        'style': "satellite",  # Style
-                                        'center': {'lon': list(centroid.coords)[0][0], 'lat': list(centroid.coords)[0][1]},
-                                        'zoom': zoom,
-                                    },
+                                    mapbox=dict(
+                                        accesstoken=st.secrets["API_TOKEN"],
+                                        style= "mapbox://styles/brunapengo/cm6zjp0dc002g01qwb24n8ccp",  # Style
+                                        center = {'lon': list(centroid.coords)[0][0], 'lat': list(centroid.coords)[0][1]},
+                                        zoom= zoom,
+                                    ),
                                     showlegend=False,
                                     margin={'l': 0, 'r': 0, 'b': 0, 't': 0},
                                     width=1440,
-                                    height=880
+                                    height=880,
                                 )
 
 
