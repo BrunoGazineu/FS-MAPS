@@ -1,6 +1,6 @@
 from app_features import *
 from geocoder import *
-from map_features import calculate_walkability, create_place_limits
+from map_features import *
 from walkability_radius_map import *
 
 import streamlit as st
@@ -83,13 +83,17 @@ if st.session_state.authenticated:
     map_style = []
 
     map_color = st.sidebar.color_picker("Walkability Area Color", "#FFFFFF")
-    radius_text = st.sidebar.toggle("Deseja mostrar o texto no raio de walkability?", value=True)
+    radius_text = False
     
     st.sidebar.header("Local")
     st.sidebar.markdown("""
-    <p style='font-size:12px;'>Caso o mapa não gere a cidade desejada, informe o local abaixo.</p>
+    <p style='font-size:12px;'>Caso o mapa não gere o BAIRRO desejado, informe o local abaixo.</p>
     """, unsafe_allow_html=True)
-    option = st.sidebar.text_input("Digite no formato: 'Cidade, País'")
+    option_neighborhood = st.sidebar.text_input("Informe o BAIRRO formato: 'Bairro, Cidade, Estado, País'")
+    st.sidebar.markdown("""
+    <p style='font-size:12px;'>Caso o mapa não gere a CIDADE desejada, informe o local abaixo.</p>
+    """, unsafe_allow_html=True)
+    option_city = st.sidebar.text_input("Informe a CIDADE no formato: 'Cidade, Estado, País'")
 
     if page == "Mapas":
         # Título da aplicação
@@ -100,7 +104,7 @@ if st.session_state.authenticated:
         # Exibe o mapa interativo no Streamlit (o mapa padrão será mostrado primeiro)
         output = st_folium(map_object, width=1920)
 
-        st.title("Walkability Map Generator")
+        st.title("Mapa de Walkability")
         if 'geometry' not in st.session_state:
             st.session_state.geometry = None  # Inicializa no estado da sessão
         if 'clicked' not in st.session_state:
@@ -124,90 +128,13 @@ if st.session_state.authenticated:
                     # Generate map
                     if st.session_state.geometry:
                         try:
-                            
-                            
+                            #MAPA WALKABILITY
                             walkability_gdf, bounds, centroid = calculate_walkability(st.session_state.geometry, walk_time_minutes, vehicle_speed, vehicle_type)
-                            #folium_map = plot_walkability_map(walkability_gdf, map_style, map_color, st.session_state.geometry)
-                            
-                            # Create a static map
-                            
                             geometry = walkability_gdf.geometry.iloc[0]
                             polygon_coords = [(lon, lat) for lon, lat in list(geometry.exterior.coords)]              
-                            def plot_plotly(lot_coords, geometry_coords, map_style, map_color, zoom, centroid, plot_polygon, walkability_id, walkability_lot_id,dashed):
-                                lon, lat = zip(*geometry_coords)
-                                lon_1,lat_1 = zip(*lot_coords) 
-                                hex_color = map_color.lstrip("#")  # Remove "#" se presente
-                                rgb_color = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
-                                
-                                fig = go.Figure()
-
-                                fig.add_trace(go.Scattermapbox(
-                                    lon=lon_1, lat=lat_1,
-                                    mode="lines",
-                                    fill="toself",
-                                    fillcolor=f"rgb({rgb_color[0]}, {rgb_color[1]}, {rgb_color[2]})",  # Certifique-se de incluir transparência
-                                    line=dict(color=f"rgb({rgb_color[0]}, {rgb_color[1]}, {rgb_color[2]})", width=3),
-                                    name= walkability_lot_id
-                                ))
-
-                                if plot_polygon:
-                                    if dashed:
-                                        lon_dashed = []
-                                        lat_dashed = []
-
-                                        for i in range(len(lon) - 1):
-                                            if i % (2 * 1) < 1:
-                                                lon_dashed.extend([lon[i], lon[i + 1], None])  # Break the line with None
-                                                lat_dashed.extend([lat[i], lat[i + 1], None])
-                                        
-                                        fig.add_trace(go.Scattermapbox(
-                                            lon=lon_dashed, lat=lat_dashed,
-                                            mode="lines",
-                                            line=dict(color=f"rgb({rgb_color[0]}, {rgb_color[1]}, {rgb_color[2]})", width=4),
-                                            name= walkability_id
-                                        ))
-                                        fig.add_trace(go.Scattermapbox(
-                                            lon=lon, lat=lat,
-                                            mode="none",
-                                            fill="toself",
-                                            fillcolor=f"rgba({rgb_color[0]}, {rgb_color[1]}, {rgb_color[2]}, 0.5)",  # Certifique-se de incluir transparência
-                                            name= walkability_id
-                                        ))
-                                    else:
-                                        fig.add_trace(go.Scattermapbox(
-                                            lon=lon, lat=lat,
-                                            mode="none",
-                                            fill="toself",
-                                            fillcolor=f"rgba({rgb_color[0]}, {rgb_color[1]}, {rgb_color[2]}, 0.5)",  # Certifique-se de incluir transparência
-                                            name= walkability_id
-                                        ))
-                                        fig.add_trace(go.Scattermapbox(
-                                            lon=lon, lat=lat,
-                                            mode="lines",
-                                            line=dict(color=f"rgb({rgb_color[0]}, {rgb_color[1]}, {rgb_color[2]})", width=4),
-                                            name= walkability_id
-                                        ))
-
-                                fig.update_layout(
-                                    mapbox=dict(
-                                        accesstoken=st.secrets["API_TOKEN"],
-                                        style= "mapbox://styles/brunapengo/cm6zjp0dc002g01qwb24n8ccp",  # Style
-                                        center = {'lon': list(centroid.coords)[0][0], 'lat': list(centroid.coords)[0][1]},
-                                        zoom= zoom,
-                                    ),
-                                    showlegend=False,
-                                    margin={'l': 0, 'r': 0, 'b': 0, 't': 0},
-                                    width=1440,
-                                    height=880,
-                                )
-
-
-                                st.plotly_chart(fig)
-
                             plot_plotly(st.session_state.geometry, polygon_coords, map_style, map_color, 14, centroid, True, "walkability_id" ,"walkability_lot_id", False)
-                            #------------------------------------------------------------------------------
                             
-                            #------------------------------------------------------------------------------
+
                             #MAPA DO TERRENO
                             map_lot_object = create_map(map_style, 16, False, [centroid.y, centroid.x])
                             st.title("Mapa do terreno")
@@ -216,9 +143,10 @@ if st.session_state.authenticated:
                                 plot_plotly(st.session_state.geometry, polygon_coords, map_style, map_color, 16, centroid, False, "lot_id", "lot_polygon_id", False)
                                 # Provide a download button
 
+
                             #MAPA DO BAIRRO
                             st.title("Mapa do Bairro")
-                            limites_neighborhood_gdf = create_place_limits(st.session_state.geometry, option, "suburb")
+                            limites_neighborhood_gdf = create_place_limits(st.session_state.geometry, option_neighborhood, option_city, "suburb")
                             neighborhood_geometry_geometry = limites_neighborhood_gdf.geometry.iloc[0]
 
                             if isinstance(neighborhood_geometry_geometry, Polygon):  # Caso seja um único polígono
@@ -232,23 +160,20 @@ if st.session_state.authenticated:
 
                             plot_plotly(st.session_state.geometry, neighborhood_geometry_coords, map_style, map_color, 13, centroid, True, "lot_city_id","nieghborhood_city_id", False)
 
+
                             #MAPA DA CIDADE
                             st.title("Mapa da cidade")
-                            limites_cidade_gdf = create_place_limits(st.session_state.geometry, option, "city" )
+                            limites_cidade_gdf = create_place_limits(st.session_state.geometry, option_neighborhood, option_city, "city" )
                             city_geometry = limites_cidade_gdf.geometry.iloc[0]
+                            
 
                             if isinstance(city_geometry, Polygon):  # Caso seja um único polígono
                                 city_geometry_coords = [(lon, lat) for lon, lat in list(city_geometry.exterior.coords)]
                                 
                             elif isinstance(city_geometry, MultiPolygon):  # Caso seja um MultiPolygon
-                                city_geometry_coords = []
-                                for poly in city_geometry.geoms:
-                                    coords = [(lon, lat) for lon, lat in poly.exterior.coords]  # Lista de tuplas (lon, lat) para cada polígono
-                                    city_geometry_coords.append(coords)  # Adiciona cada polígono à lista principal
-
+                                largest_polygon = max(city_geometry.geoms, key=lambda poly: poly.area)
+                                city_geometry_coords = [(lon, lat) for lon, lat in largest_polygon.exterior.coords]
                             plot_plotly(st.session_state.geometry, city_geometry_coords, map_style, map_color, 9, centroid, True, "lot_city_id","polygon_city_id", False)
-                            
-                            
                             
                             #MAPA REDONDO
                             st.title("Raio walkability")

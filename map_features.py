@@ -71,17 +71,6 @@ def calculate_walkability(lot_coords, walk_time_minutes, vehicle_speed, day_time
     return walkability_gdf, clean_polygon.bounds, centroid
 
 
-def plot_walkability_map(walkability_gdf, map_style, map_color, geometry):
-    """
-    Plot the walkability map using Folium for interactive visualization.
-    """
-    # Get the center of the polygon
-    centroid = walkability_gdf.geometry.iloc[0].centroid
-    
-
-    
-    return m
-
 
 def create_city_limits(cidade):
     city_boundary = ox.geocode_to_gdf(cidade)
@@ -90,29 +79,114 @@ def create_city_limits(cidade):
 import folium
 import geopandas as gpd
 import osmnx as ox
+import plotly.graph_objects as go
 
-def create_city_limits(cidade):
+
+def create_city_limits(local):
     """Cria os limites da cidade usando osmnx."""
-    city_boundary = ox.geocode_to_gdf(cidade)
+    city_boundary = ox.geocode_to_gdf(local)
     return city_boundary
 
 
-def create_place_limits(geometry, option, area_type):
+def create_place_limits(geometry, option_neighborhood, option_city, area_type):
     """Cria um mapa com os limites da cidade."""
     center_point = calculate_polygon_center(geometry)  # Substitua com sua lógica
     cidade, country, neighborhood = geocode_city(center_point)  # Substitua com sua lógica
     if area_type == "city":
-        if option:
-            limites_local = create_city_limits(option)
+        if option_city:
+            limites_local = create_city_limits(option_city)
         else:
             limites_local = create_city_limits(f"{cidade}, {country}")
         return limites_local
     elif area_type == "suburb":
-        if option:
-            limites_local = create_city_limits(option)
+        if option_neighborhood:
+            limites_local = create_city_limits(option_neighborhood)
         else:
             limites_local = create_city_limits(f"{neighborhood}, {cidade}, {country}")
         return limites_local
+    
+
+def plot_plotly(lot_coords, geometry_coords, map_style, map_color, zoom, centroid, plot_polygon, walkability_id, walkability_lot_id,dashed):
+
+    geometry_coords = geometry_coords
+    # Garantir que geometry_coords é uma lista de tuplas
+    # Remover camada extra se for uma lista de listas
+    if isinstance(geometry_coords[0], list):
+        geometry_coords = [coord for sublist in geometry_coords for coord in sublist]  # Achata a lista
+
+    # Verificar se todos os elementos são tuplas antes de usar zip()
+    if all(isinstance(pt, tuple) and len(pt) == 2 for pt in geometry_coords):
+        lon, lat = zip(*geometry_coords)
+    else:
+        print("Erro: geometry_coords não está no formato correto!")
+
+    #lon, lat = zip(*geometry_coords)
+    lon_1,lat_1 = zip(*lot_coords) 
+    hex_color = map_color.lstrip("#")  # Remove "#" se presente
+    rgb_color = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Scattermapbox(
+        lon=lon_1, lat=lat_1,
+        mode="lines",
+        fill="toself",
+        fillcolor=f"rgb({rgb_color[0]}, {rgb_color[1]}, {rgb_color[2]})",  # Certifique-se de incluir transparência
+        line=dict(color=f"rgb({rgb_color[0]}, {rgb_color[1]}, {rgb_color[2]})", width=3),
+        name= walkability_lot_id
+    ))
+
+    if plot_polygon:
+        if dashed:
+            lon_dashed = []
+            lat_dashed = []
+
+            for i in range(len(lon) - 1):
+                if i % (2 * 1) < 1:
+                    lon_dashed.extend([lon[i], lon[i + 1], None])  # Break the line with None
+                    lat_dashed.extend([lat[i], lat[i + 1], None])
+            
+            fig.add_trace(go.Scattermapbox(
+                lon=lon_dashed, lat=lat_dashed,
+                mode="lines",
+                line=dict(color=f"rgb({rgb_color[0]}, {rgb_color[1]}, {rgb_color[2]})", width=4),
+                name= walkability_id
+            ))
+            fig.add_trace(go.Scattermapbox(
+                lon=lon, lat=lat,
+                mode="none",
+                fill="toself",
+                fillcolor=f"rgba({rgb_color[0]}, {rgb_color[1]}, {rgb_color[2]}, 0.5)",  # Certifique-se de incluir transparência
+                name= walkability_id
+            ))
+        else:
+            fig.add_trace(go.Scattermapbox(
+                lon=lon, lat=lat,
+                mode="none",
+                fill="toself",
+                fillcolor=f"rgba({rgb_color[0]}, {rgb_color[1]}, {rgb_color[2]}, 0.5)",  # Certifique-se de incluir transparência
+                name= walkability_id
+            ))
+            fig.add_trace(go.Scattermapbox(
+                lon=lon, lat=lat,
+                mode="lines",
+                line=dict(color=f"rgb({rgb_color[0]}, {rgb_color[1]}, {rgb_color[2]})", width=4),
+                name= walkability_id
+            ))
+
+    fig.update_layout(
+        mapbox=dict(
+            accesstoken=st.secrets["API_TOKEN"],
+            style= "mapbox://styles/brunapengo/cm6zjp0dc002g01qwb24n8ccp",  # Style
+            center = {'lon': list(centroid.coords)[0][0], 'lat': list(centroid.coords)[0][1]},
+            zoom= zoom,
+        ),
+        showlegend=False,
+        margin={'l': 0, 'r': 0, 'b': 0, 't': 0},
+        width=1440,
+        height=880,
+    )
+    st.plotly_chart(fig)
 
 
 
